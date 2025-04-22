@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Interface</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 200px);
+        }
+        .message-container {
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
+        .user-message {
+            background-color: #e9ecef;
+            border-radius: 1rem;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            max-width: 80%;
+            align-self: flex-end;
+        }
+        .assistant-message {
+            background-color: #d1e7dd;
+            border-radius: 1rem;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            max-width: 80%;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin: 1rem auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4">
+        <header class="bg-white shadow rounded-lg p-4 mb-6">
+            <h1 class="text-2xl font-bold text-center text-gray-800">AI Chat Interface</h1>
+            <div class="flex flex-wrap justify-center space-x-2 mt-4">
+                <div class="mb-2">
+                    <label for="apiSelection" class="block text-sm font-medium text-gray-700">Select API:</label>
+                    <select id="apiSelection" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                    </select>
+                </div>
+                <div class="mb-2 model-selection" id="openaiModels">
+                    <label for="openaiModel" class="block text-sm font-medium text-gray-700">OpenAI Model:</label>
+                    <select id="openaiModel" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <option value="gpt-4o">GPT-4o (Balanced)</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini (Faster)</option>
+                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fastest)</option>
+                    </select>
+                </div>
+                <div class="mb-2 model-selection" id="claudeModels" style="display: none;">
+                    <label for="claudeModel" class="block text-sm font-medium text-gray-700">Claude Model:</label>
+                    <select id="claudeModel" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <option value="claude-3-opus-20240229">Claude 3 Opus (Most Powerful)</option>
+                        <option value="claude-3-sonnet-20240229">Claude 3 Sonnet (Balanced)</option>
+                        <option value="claude-3-haiku-20240307">Claude 3 Haiku (Fastest)</option>
+                        <option value="claude-3-5-sonnet-20240620">Claude 3.5 Sonnet (Enhanced)</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+        
+        <main class="bg-white shadow rounded-lg p-4 chat-container flex flex-col">
+            <div id="messages" class="message-container flex flex-col flex-grow">
+                <!-- Messages will be added here -->
+                <div class="assistant-message">
+                    Hello! I'm an AI assistant. How can I help you today?
+                </div>
+            </div>
+            
+            <div id="loader" class="loader"></div>
+            
+            <div class="mt-auto pt-4 border-t border-gray-200">
+                <form id="messageForm" class="flex">
+                    <input type="text" id="userInput" class="flex-grow rounded-l-lg border border-gray-300 py-2 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Type your message...">
+                    <button type="submit" class="bg-indigo-600 text-white rounded-r-lg px-4 py-2 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">Send</button>
+                </form>
+                <div class="flex justify-between mt-2">
+                    <button id="uploadImageBtn" class="text-indigo-600 text-sm hover:text-indigo-800">
+                        Upload Image
+                    </button>
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                    <span id="imageStatus" class="text-sm text-gray-500"></span>
+                    <button id="clearChat" class="text-red-600 text-sm hover:text-red-800">
+                        Clear Chat
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

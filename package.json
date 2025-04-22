@@ -1,0 +1,15 @@
+{
+  "name": "ai-chat-interface",
+  "version": "1.0.0",
+  "description": "A web interface for interacting with AI APIs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {
+    "netlify-cli": "^12.0.0"
+  }
+}
