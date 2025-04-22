@@ -1,8 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
     const apiSelection = document.getElementById('apiSelection');
-    const openaiModels = document.getElementById('openaiModels');
-    const claudeModels = document.getElementById('claudeModels');
     const messageForm = document.getElementById('messageForm');
     const userInput = document.getElementById('userInput');
     const messagesContainer = document.getElementById('messages');
@@ -16,17 +14,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let conversationHistory = [];
     let currentImageBase64 = null;
     let currentImageType = null;
-
-    // API selection change handler
-    apiSelection.addEventListener('change', function() {
-        if (this.value === 'openai') {
-            openaiModels.style.display = 'block';
-            claudeModels.style.display = 'none';
-        } else {
-            openaiModels.style.display = 'none';
-            claudeModels.style.display = 'block';
-        }
-    });
 
     // Form submission handler
     messageForm.addEventListener('submit', async function(e) {
@@ -43,11 +30,8 @@ document.addEventListener('DOMContentLoaded', function() {
         loader.style.display = 'block';
         
         try {
-            // Get selected API and model
+            // Get selected API
             const api = apiSelection.value;
-            const model = api === 'openai' 
-                ? document.getElementById('openaiModel').value
-                : document.getElementById('claudeModel').value;
             
             // Prepare message content
             let messageContent;
@@ -109,7 +93,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({
                     api: api,
-                    model: model,
                     messages: conversationHistory
                 })
             });
