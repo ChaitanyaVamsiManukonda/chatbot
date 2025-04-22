@@ -42,6 +42,19 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        <script>
+
+    if (localStorage.getItem('authenticated') !== 'true') {
+        window.location.href = '/login.html';
+    }
+    
+    // Add logout function
+    function logout() {
+        localStorage.removeItem('authenticated');
+        window.location.href = '/login.html';
+    }
+</script>
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
