@@ -87,3 +87,29 @@ A web-based interface for interacting with OpenAI and Anthropic AI models, desig
 - Image upload capability
 - Chat history with message threading
 - Responsive design that works on mobile and desktop
+
+## Microphone / Voice recording
+
+This project includes a simple microphone recorder in the chat UI. Features:
+
+- Record audio from your browser (click the 🎤 button).
+- Play back and download recorded audio.
+- Send recorded audio to the server (Netlify Function) for processing.
+- Optional live speech-to-text (Web Speech API) in supporting browsers — you can insert the live transcript into the chat input.
+
+Server-side transcription (optional):
+
+- If you want the Netlify function to automatically transcribe uploaded audio using OpenAI's transcription endpoint, set the following environment variables in Netlify:
+   - `OPENAI_API_KEY` (your OpenAI key)
+   - `TRANSCRIBE_WITH_OPENAI=true`
+
+- The function expects the `form-data` package to be available when automatic transcription is enabled. Install it locally (and add to deploy dependencies) with:
+
+```
+npm install form-data
+```
+
+Privacy and browser support:
+
+- The browser will ask for microphone permission. Audio is recorded locally and only uploaded when you click "Send audio".
+- Live speech-to-text uses the Web Speech API and is available in Chrome/Edge with webkit prefixes. Server-side transcription uses third-party APIs (OpenAI) and will send audio to that provider — configure it only if you accept that.

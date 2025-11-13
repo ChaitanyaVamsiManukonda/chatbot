@@ -9,11 +9,32 @@ document.addEventListener('DOMContentLoaded', function() {
     const imageInput = document.getElementById('imageInput');
     const imageStatus = document.getElementById('imageStatus');
     const loader = document.getElementById('loader');
+    const micBtn = document.getElementById('micBtn');
+    const recordingIndicator = document.getElementById('recordingIndicator');
+    const voiceControls = document.getElementById('voiceControls');
+    const recordedAudio = document.getElementById('recordedAudio');
+    const downloadAudioBtn = document.getElementById('downloadAudioBtn');
+    const sendAudioBtn = document.getElementById('sendAudioBtn');
+    const insertTranscriptBtn = document.getElementById('insertTranscriptBtn');
+    const sttSupportNote = document.getElementById('sttSupportNote');
+    const sendBtn = document.getElementById('sendBtn');
+    const recordingTimer = document.getElementById('recordingTimer');
 
     // Conversation history
     let conversationHistory = [];
     let currentImageBase64 = null;
     let currentImageType = null;
+    // Recording state
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let latestAudioBlob = null;
+    let isRecording = false;
+    // SpeechRecognition (optional live transcription)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    let recognition = null;
+    let latestTranscript = '';
+    let recordingInterval = null;
+    let recordingStart = null;
 
     // Form submission handler
     messageForm.addEventListener('submit', async function(e) {
@@ -151,6 +172,200 @@ document.addEventListener('DOMContentLoaded', function() {
                 imageStatus.textContent = `Image ready: ${file.name}`;
             };
             reader.readAsDataURL(file);
+        }
+    });
+
+    // Microphone / recording handlers
+    micBtn.addEventListener('click', async function() {
+        if (isRecording) {
+            // stop
+            stopRecording();
+            return;
+        }
+
+        // start recording
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(stream);
+
+            mediaRecorder.addEventListener('dataavailable', e => {
+                if (e.data && e.data.size > 0) audioChunks.push(e.data);
+            });
+
+            mediaRecorder.addEventListener('stop', () => {
+                latestAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const url = URL.createObjectURL(latestAudioBlob);
+                recordedAudio.src = url;
+                recordedAudio.style.display = 'inline-block';
+                downloadAudioBtn.href = url;
+                downloadAudioBtn.download = `recording_${Date.now()}.webm`;
+                downloadAudioBtn.style.display = 'inline-block';
+                insertTranscriptBtn.style.display = SpeechRecognition ? 'inline-block' : 'none';
+                voiceControls.classList.remove('hidden');
+            });
+
+            mediaRecorder.start();
+            isRecording = true;
+            recordingIndicator.style.display = 'inline';
+            // show timer and start counting
+            if (recordingTimer) {
+                recordingTimer.style.display = 'inline';
+                recordingStart = Date.now();
+                recordingInterval = setInterval(() => {
+                    const elapsed = Date.now() - recordingStart;
+                    const seconds = Math.floor(elapsed / 1000) % 60;
+                    const minutes = Math.floor(elapsed / 60000);
+                    recordingTimer.textContent = `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+                }, 250);
+            }
+            // disable other controls while recording
+            if (sendBtn) sendBtn.disabled = true;
+            if (uploadImageBtn) uploadImageBtn.disabled = true;
+            userInput.disabled = true;
+            voiceControls.classList.remove('hidden');
+            micBtn.textContent = '⏹️';
+
+            // If browser supports SpeechRecognition, run it live to capture transcript
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.interimResults = true;
+                recognition.continuous = true;
+                recognition.lang = 'en-US';
+                latestTranscript = '';
+
+                recognition.addEventListener('result', (ev) => {
+                    let interim = '';
+                    let final = '';
+                    for (let i = ev.resultIndex; i < ev.results.length; ++i) {
+                        const res = ev.results[i];
+                        if (res.isFinal) final += res[0].transcript;
+                        else interim += res[0].transcript;
+                    }
+                    // update a temporary variable; do not auto-send
+                    latestTranscript = (latestTranscript + ' ' + final + ' ' + interim).trim();
+                    sttSupportNote.textContent = latestTranscript ? `Transcript: ${latestTranscript}` : '';
+                });
+
+                recognition.addEventListener('end', () => {
+                    // recognition may stop; if still recording try to restart
+                    if (isRecording) {
+                        try { recognition.start(); } catch (e) { /* ignore */ }
+                    }
+                });
+
+                recognition.start();
+                sttSupportNote.textContent = 'Live transcription enabled';
+            } else {
+                sttSupportNote.textContent = 'SpeechRecognition not supported in this browser.';
+            }
+
+        } catch (err) {
+            console.error('Could not start recording:', err);
+            addMessageToUI('assistant', 'Microphone access denied or not available.');
+            isRecording = false;
+            recordingIndicator.style.display = 'none';
+            micBtn.textContent = '🎤';
+        }
+    });
+
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            mediaRecorder.stream && mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        }
+        if (recognition) {
+            try { recognition.stop(); } catch (e) { }
+            recognition = null;
+        }
+        isRecording = false;
+        recordingIndicator.style.display = 'none';
+        micBtn.textContent = '🎤';
+        // stop and reset timer
+        if (recordingInterval) {
+            clearInterval(recordingInterval);
+            recordingInterval = null;
+        }
+        if (recordingTimer) {
+            recordingTimer.textContent = '00:00';
+            recordingTimer.style.display = 'none';
+        }
+        // re-enable controls
+        if (sendBtn) sendBtn.disabled = false;
+        if (uploadImageBtn) uploadImageBtn.disabled = false;
+        userInput.disabled = false;
+    }
+
+    // Download button is an anchor, set href when blob created
+    downloadAudioBtn.addEventListener('click', function(ev) {
+        // It's an anchor; the href is set when recording stops
+    });
+
+    // Insert live transcript into user input
+    insertTranscriptBtn.addEventListener('click', function() {
+        if (latestTranscript) {
+            userInput.value = (userInput.value + ' ' + latestTranscript).trim();
+        } else {
+            addMessageToUI('assistant', 'No transcript available.');
+        }
+    });
+
+    // Send recorded audio to serverless function
+    sendAudioBtn.addEventListener('click', async function() {
+        if (!latestAudioBlob) {
+            addMessageToUI('assistant', 'No audio recorded yet.');
+            return;
+        }
+
+        const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const dataUrl = reader.result; // data:audio/webm;base64,...
+                const base64 = dataUrl.split(',')[1];
+                resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+
+        try {
+            const base64 = await blobToBase64(latestAudioBlob);
+            loader.style.display = 'block';
+
+            const payload = {
+                api: apiSelection.value,
+                messages: conversationHistory,
+                audio: base64,
+                audioName: `recording_${Date.now()}.webm`,
+                audioType: latestAudioBlob.type
+            };
+
+            const resp = await fetch('/.netlify/functions/ai-query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await resp.json();
+            if (!resp.ok) {
+                throw new Error(result.error || `Server error ${resp.status}`);
+            }
+
+            if (result.transcript) {
+                addMessageToUI('assistant', `Transcription: ${result.transcript}`);
+                userInput.value = (userInput.value + ' ' + result.transcript).trim();
+                conversationHistory.push({ role: 'user', content: result.transcript });
+            }
+
+            if (result.message) {
+                addMessageToUI('assistant', result.message);
+                conversationHistory.push({ role: 'assistant', content: result.message });
+            }
+        } catch (err) {
+            console.error('Error sending audio:', err);
+            addMessageToUI('assistant', `Error sending audio: ${err.message}`);
+        } finally {
+            loader.style.display = 'none';
         }
     });
 
