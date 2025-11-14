@@ -94,6 +94,17 @@ function logout() {
                     <button id="sendAudioBtn" type="button" class="text-sm text-indigo-600 ml-3" style="display:none;">Send audio</button>
                     <button id="insertTranscriptBtn" class="text-sm text-indigo-600 ml-3" style="display:none;">Insert transcript</button>
                     <span id="sttSupportNote" class="text-sm text-gray-500 ml-3"></span>
+                    <div class="mt-2">
+                        <label class="inline-flex items-center text-sm text-gray-700">
+                            <input id="useSttToggle" type="checkbox" class="mr-2" checked>
+                            Use browser live transcription
+                        </label>
+                        <div id="sttTips" class="text-xs text-gray-500 mt-1">Tip: For best results, speak clearly and close to your microphone in a quiet room. The browser's live STT is free.</div>
+                        <label class="inline-flex items-center text-sm text-gray-700 mt-2">
+                            <input id="allowServerUpload" type="checkbox" class="mr-2">
+                            Allow server upload (may incur charges) — off by default
+                        </label>
+                    </div>
                 </div>
                 <div class="flex justify-between mt-2">
                     <button id="uploadImageBtn" class="text-indigo-600 text-sm hover:text-indigo-800">

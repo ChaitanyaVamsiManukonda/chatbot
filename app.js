@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const sendAudioBtn = document.getElementById('sendAudioBtn');
     const insertTranscriptBtn = document.getElementById('insertTranscriptBtn');
     const sttSupportNote = document.getElementById('sttSupportNote');
+    const allowServerUpload = document.getElementById('allowServerUpload');
+    const useSttToggle = document.getElementById('useSttToggle');
+    const sttTips = document.getElementById('sttTips');
     const sendBtn = document.getElementById('sendBtn');
     const recordingTimer = document.getElementById('recordingTimer');
 
@@ -227,37 +230,49 @@ document.addEventListener('DOMContentLoaded', function() {
             micBtn.textContent = '⏹️';
 
             // If browser supports SpeechRecognition, run it live to capture transcript
-            if (SpeechRecognition) {
+            if (SpeechRecognition && useSttToggle && useSttToggle.checked) {
                 recognition = new SpeechRecognition();
                 recognition.interimResults = true;
                 recognition.continuous = true;
-                recognition.lang = 'en-US';
+                // Set recognition language to the browser locale for better accuracy
+                recognition.lang = navigator.language || 'en-US';
                 latestTranscript = '';
 
                 recognition.addEventListener('result', (ev) => {
-                    let interim = '';
-                    let final = '';
-                    for (let i = ev.resultIndex; i < ev.results.length; ++i) {
+                    // Build a transcript string consisting of all final results (more stable)
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+                    for (let i = 0; i < ev.results.length; ++i) {
                         const res = ev.results[i];
-                        if (res.isFinal) final += res[0].transcript;
-                        else interim += res[0].transcript;
+                        if (res.isFinal) finalTranscript += (res[0].transcript + ' ');
+                        else interimTranscript += (res[0].transcript + ' ');
                     }
-                    // update a temporary variable; do not auto-send
-                    latestTranscript = (latestTranscript + ' ' + final + ' ' + interim).trim();
-                    sttSupportNote.textContent = latestTranscript ? `Transcript: ${latestTranscript}` : '';
+                    // Prefer final transcript (more accurate); show interim as hint
+                    latestTranscript = finalTranscript.trim() || interimTranscript.trim();
+                    if (finalTranscript.trim()) {
+                        sttSupportNote.textContent = `Transcript: ${latestTranscript}`;
+                    } else if (interimTranscript.trim()) {
+                        sttSupportNote.textContent = `Listening... ${interimTranscript.trim()}`;
+                    } else {
+                        sttSupportNote.textContent = '';
+                    }
                 });
 
                 recognition.addEventListener('end', () => {
-                    // recognition may stop; if still recording try to restart
-                    if (isRecording) {
+                    // Restart recognition automatically while recording and toggle is on
+                    if (isRecording && useSttToggle && useSttToggle.checked) {
                         try { recognition.start(); } catch (e) { /* ignore */ }
                     }
                 });
 
                 recognition.start();
                 sttSupportNote.textContent = 'Live transcription enabled';
-            } else {
+                if (sttTips) sttTips.style.display = 'block';
+            } else if (!SpeechRecognition) {
                 sttSupportNote.textContent = 'SpeechRecognition not supported in this browser.';
+                if (sttTips) sttTips.style.display = 'none';
+            } else {
+                sttSupportNote.textContent = 'Live transcription is disabled (toggle off).';
             }
 
         } catch (err) {
@@ -312,6 +327,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Send recorded audio to serverless function
     sendAudioBtn.addEventListener('click', async function() {
+        // Safety: require explicit user opt-in before uploading audio to server to avoid accidental API charges
+        if (allowServerUpload && !allowServerUpload.checked) {
+            addMessageToUI('assistant', 'Server upload is disabled. Toggle "Allow server upload" to enable sending recorded audio to the server (may incur charges).');
+            return;
+        }
         if (!latestAudioBlob) {
             addMessageToUI('assistant', 'No audio recorded yet.');
             return;
