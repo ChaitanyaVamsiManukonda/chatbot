@@ -100,29 +100,63 @@ A web-based interface for interacting with OpenAI and Anthropic AI models, desig
 - Image upload capability
 - Chat history with message threading
 - Responsive design that works on mobile and desktop
+- **Voice-triggered RAG training**: Record audio, transcribe it, and train the RAG model with your voice input.
 
-## Microphone / Voice recording
+## Microphone / Voice recording & RAG Training
 
-This project includes a simple microphone recorder in the chat UI. Features:
+This project includes a simple microphone recorder in the chat UI with integrated RAG training. Features:
 
-- Record audio from your browser (click the 🎤 button).
-- Play back and download recorded audio.
-- Send recorded audio to the server (Netlify Function) for processing.
-- Optional live speech-to-text (Web Speech API) in supporting browsers — you can insert the live transcript into the chat input.
+- **Record audio** from your browser (click the 🎤 button).
+- **Live speech-to-text** (Web Speech API) in supporting browsers — transcribe as you speak.
+- **Play back and download** recorded audio.
+- **Train RAG with transcript** — after recording, click "📚 Train RAG with transcript" to add your transcript to the retrieval index.
+- **Send audio to server** for processing and optional cloud transcription.
 
-Server-side transcription (optional):
+### Voice-to-RAG Training Workflow
 
-- If you want the Netlify function to automatically transcribe uploaded audio using OpenAI's transcription endpoint, set the following environment variables in Netlify:
+1. Click 🎤 to start recording audio.
+2. Speak naturally into your microphone. The browser's live speech-to-text will capture your words as you speak.
+3. Stop recording when done (the timer will show how long you recorded).
+4. After recording, you'll see:
+   - **Insert transcript** — adds the transcript to the chat input.
+   - **📚 Train RAG with transcript** — saves the transcript as a training document in the retrieval index.
+   - **Send audio** — sends the audio file to the server for optional cloud transcription.
+5. Click **Train RAG with transcript** to add your voice input to the model's knowledge base.
+6. Your transcript is now indexed and will be retrieved when relevant queries are asked.
+
+### Optional Server Transcription
+
+- If you want the Netlify function to automatically transcribe uploaded audio using OpenAI's transcription endpoint, set:
    - `OPENAI_API_KEY` (your OpenAI key)
    - `TRANSCRIBE_WITH_OPENAI=true`
-
-- The function expects the `form-data` package to be available when automatic transcription is enabled. Install it locally (and add to deploy dependencies) with:
-
+- The function requires the `form-data` package:
 ```
 npm install form-data
 ```
 
-Privacy and browser support:
+### RAG Index Management
 
-- The browser will ask for microphone permission. Audio is recorded locally and only uploaded when you click "Send audio".
-- Live speech-to-text uses the Web Speech API and is available in Chrome/Edge with webkit prefixes. Server-side transcription uses third-party APIs (OpenAI) and will send audio to that provider — configure it only if you accept that.
+- The retrieval index is stored in `data/index.json` (generated automatically).
+- **Ingest API**: Send documents to `/.netlify/functions/ingest`:
+  ```json
+  {
+    "docs": [
+      { "id": "doc1", "title": "My Document", "text": "Content here" },
+      { "id": "doc2", "title": "Another Doc", "text": "More content" }
+    ],
+    "mode": "append"
+  }
+  ```
+  - `mode: "append"` (default) — adds docs to existing index.
+  - `mode: "replace"` — replaces entire index with new docs.
+
+- **Query with retrieval**: When you send a message, if no LLM API keys are configured, you'll receive the top-K retrieved documents from the index (zero-cost retrieval). If API keys are present, retrieved docs are injected as context before calling the LLM.
+
+### Privacy and Browser Support
+
+- Audio is recorded locally and only uploaded when you click "Send audio" or "Train RAG with transcript".
+- Live speech-to-text uses the Web Speech API (free, runs in browser) — available in Chrome/Edge with webkit prefixes.
+- Server-side transcription uses OpenAI APIs and will send audio to their servers — configure only if you accept data transmission.
+- Training transcripts are added to a local JSON index (`data/index.json`) and are not sent to external services unless you enable LLM calls.
+
+````

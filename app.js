@@ -205,6 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 downloadAudioBtn.download = `recording_${Date.now()}.webm`;
                 downloadAudioBtn.style.display = 'inline-block';
                 insertTranscriptBtn.style.display = SpeechRecognition ? 'inline-block' : 'none';
+                trainWithTranscriptBtn.style.display = (SpeechRecognition && latestTranscript) ? 'inline-block' : 'none';
                 voiceControls.classList.remove('hidden');
             });
 
@@ -322,6 +323,54 @@ document.addEventListener('DOMContentLoaded', function() {
             userInput.value = (userInput.value + ' ' + latestTranscript).trim();
         } else {
             addMessageToUI('assistant', 'No transcript available.');
+        }
+    });
+
+    // Train RAG model with transcript
+    const trainWithTranscriptBtn = document.getElementById('trainWithTranscriptBtn');
+    const trainingStatus = document.getElementById('trainingStatus');
+
+    trainWithTranscriptBtn.addEventListener('click', async function() {
+        if (!latestTranscript) {
+            addMessageToUI('assistant', 'No transcript available to train with.');
+            return;
+        }
+
+        trainingStatus.textContent = 'Training...';
+        trainingStatus.style.display = 'inline';
+
+        try {
+            // Create a training document from the transcript
+            const trainingDoc = {
+                id: `transcript_${Date.now()}`,
+                title: 'Voice Transcript',
+                text: latestTranscript
+            };
+
+            // Call the ingest function to add this transcript to the RAG index
+            const resp = await fetch('/.netlify/functions/ingest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ docs: [trainingDoc] })
+            });
+
+            const result = await resp.json();
+            if (!resp.ok) {
+                throw new Error(result.error || `Server error ${resp.status}`);
+            }
+
+            trainingStatus.textContent = `✓ RAG trained with transcript (${result.indexed} doc indexed)`;
+            trainingStatus.style.color = 'green';
+            setTimeout(() => {
+                trainingStatus.style.display = 'none';
+            }, 3000);
+
+            addMessageToUI('assistant', `✓ Successfully trained RAG model with your transcript: "${latestTranscript.substring(0, 50)}..."`);
+        } catch (err) {
+            console.error('Error training RAG:', err);
+            trainingStatus.textContent = `✗ Training failed: ${err.message}`;
+            trainingStatus.style.color = 'red';
+            addMessageToUI('assistant', `Error training RAG: ${err.message}`);
         }
     });
 
