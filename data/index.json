@@ -1,0 +1,57 @@
+{
+  "docs": [
+    {
+      "id": "1",
+      "title": "Colors",
+      "text": "Red blue and green are common colors. Red is warm.",
+      "tf": {
+        "red": 2,
+        "blue": 1,
+        "green": 1,
+        "common": 1,
+        "colors": 2,
+        "warm": 1
+      },
+      "termsCount": 8
+    },
+    {
+      "id": "2",
+      "title": "Fruits",
+      "text": "Apples and oranges are fruits. Apples can be red or green.",
+      "tf": {
+        "apples": 2,
+        "oranges": 1,
+        "fruits": 2,
+        "can": 1,
+        "red": 1,
+        "green": 1
+      },
+      "termsCount": 8
+    }
+  ],
+  "df": {
+    "red": 2,
+    "blue": 1,
+    "green": 2,
+    "common": 1,
+    "colors": 1,
+    "warm": 1,
+    "apples": 1,
+    "oranges": 1,
+    "fruits": 1,
+    "can": 1
+  },
+  "idf": {
+    "red": 1,
+    "blue": 1.4054651081081644,
+    "green": 1,
+    "common": 1.4054651081081644,
+    "colors": 1.4054651081081644,
+    "warm": 1.4054651081081644,
+    "apples": 1.4054651081081644,
+    "oranges": 1.4054651081081644,
+    "fruits": 1.4054651081081644,
+    "can": 1.4054651081081644
+  },
+  "N": 2
+}

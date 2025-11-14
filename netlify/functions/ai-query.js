@@ -5,6 +5,7 @@ require('dotenv').config();
 // Default models
 const OPENAI_DEFAULT_MODEL = 'gpt-4.1-2025-04-14';
 const CLAUDE_DEFAULT_MODEL = 'claude-3-7-sonnet-20250219';
+const { search, loadIndex } = require('../../lib/retrieval');
 
 exports.handler = async function(event, context) {
     // Only allow POST requests
@@ -30,7 +31,7 @@ exports.handler = async function(event, context) {
             throw new Error('Invalid API selection');
         }
 
-    // Get API keys from environment variables (read early so transcription can use it)
+        // Get API keys from environment variables (read early so transcription can use it)
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
     const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -80,16 +81,48 @@ exports.handler = async function(event, context) {
                 console.log('Automatic transcription not enabled or OpenAI API key missing.');
             }
 
-            // If a transcript exists, append it to the messages so the model can respond to it
-            if (transcript) {
-                if (Array.isArray(messages)) {
-                    messages.push({ role: 'user', content: transcript });
-                }
-            }
+                        // If a transcript exists, append it to the messages so the model can respond to it
+                        if (transcript) {
+                                if (Array.isArray(messages)) {
+                                        messages.push({ role: 'user', content: transcript });
+                                }
+                        }
         }
 
-    console.log(`OpenAI API Key defined: ${Boolean(OPENAI_API_KEY)}`);
-    console.log(`Anthropic API Key defined: ${Boolean(ANTHROPIC_API_KEY)}`);
+        // Basic retrieval augmentation (TF-IDF). If an index exists, search for relevant passages
+        try {
+            // ensure messages array
+            const msgs = Array.isArray(messages) ? messages : [];
+            // find last user message to use as query
+            const lastUser = [...msgs].reverse().find(m => m && m.role === 'user' && typeof m.content === 'string');
+            const userQuery = lastUser ? lastUser.content : null;
+            let retrieved = [];
+            if (userQuery) {
+                retrieved = search(userQuery, 5);
+            }
+
+            // If we have retrieved results but no API keys configured, return them directly (no-cost mode)
+            if (retrieved && retrieved.length > 0 && !OPENAI_API_KEY && !ANTHROPIC_API_KEY) {
+                return {
+                    statusCode: 200,
+                    body: JSON.stringify({ message: null, transcript: transcript, retrieved })
+                };
+            }
+
+            // If we have retrieved results and an API key is present, inject them as a system message
+            if (retrieved && retrieved.length > 0) {
+                const combined = retrieved.map((r, i) => `[[${i+1}] ${r.title || 'doc'}]\n${r.text}`).join('\n\n---\n\n');
+                // prepend a system message with retrieved context
+                if (Array.isArray(messages)) {
+                    messages.unshift({ role: 'system', content: `Retrieved documents:\n${combined}` });
+                }
+            }
+        } catch (err) {
+            console.error('Retrieval error:', err.message);
+        }
+
+        console.log(`OpenAI API Key defined: ${Boolean(OPENAI_API_KEY)}`);
+        console.log(`Anthropic API Key defined: ${Boolean(ANTHROPIC_API_KEY)}`);
 
         let response;
         let assistantMessage;
