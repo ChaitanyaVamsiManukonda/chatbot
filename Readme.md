@@ -61,18 +61,31 @@ A web-based interface for interacting with OpenAI and Anthropic AI models, desig
    npm install
    ```
 
-2. Create a `.env` file with your API keys:
+2. Create a `.env` file in the project root with environment variables:
+   - Copy `.env.example` as a template: `cp .env.example .env`
+   - Edit `.env` and add your configuration:
+     ```
+     SITE_PASSWORD=12345
+     OPENAI_API_KEY=your_openai_key_here
+     ANTHROPIC_API_KEY=your_anthropic_key_here
+     TRANSCRIBE_WITH_OPENAI=false
+     ```
+   - **Important**: Never commit `.env` to git. Add `.env` to your `.gitignore` if not already there.
+
+3. Switch to Node LTS (18 or 20) if not already on it. Using nvm (macOS/Linux):
    ```
-   OPENAI_API_KEY=your_openai_key_here
-   ANTHROPIC_API_KEY=your_anthropic_key_here
+   nvm install 18
+   nvm use 18
    ```
 
-3. Start the local development server:
+4. Start the local development server:
    ```
    npx netlify dev
    ```
 
-4. Open `http://localhost:8888` in your browser
+5. Open `http://localhost:8888` in your browser
+   - You'll be redirected to the login page. Enter the password you set in `.env` (e.g., 12345).
+   - After login, use the microphone feature, chat, and test recording/playback.
 
 ## Security Notes
 
