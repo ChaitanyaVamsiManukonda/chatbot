@@ -25,18 +25,31 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Check if already authenticated
-            if (localStorage.getItem('authenticated') === 'true') {
-                window.location.href = '/index.html';
-            }
-
             const loginForm = document.getElementById('loginForm');
             const errorMessage = document.getElementById('error-message');
-            
+
+            // Check whether authentication is required on the server. If not required, auto-authenticate.
+            (async function checkAuthRequired() {
+                try {
+                    const resp = await fetch('/.netlify/functions/auth');
+                    if (resp.ok) {
+                        const body = await resp.json();
+                        if (body && body.required === false) {
+                            // No password required on server — mark authenticated and redirect
+                            localStorage.setItem('authenticated', 'true');
+                            window.location.href = '/index.html';
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Could not check auth requirement:', err);
+                }
+            })();
+
             loginForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const password = document.getElementById('password').value;
-                
+
                 try {
                     const response = await fetch('/.netlify/functions/auth', {
                         method: 'POST',
@@ -45,9 +58,9 @@
                         },
                         body: JSON.stringify({ password })
                     });
-                    
+
                     if (response.ok) {
-                        // Authentication successful
+                        // Authentication successful (or not required)
                         localStorage.setItem('authenticated', 'true');
                         window.location.href = '/index.html';
                     } else {

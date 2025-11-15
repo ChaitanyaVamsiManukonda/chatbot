@@ -44,9 +44,25 @@
     }
 </style>
 <script>
-if (localStorage.getItem('authenticated') !== 'true') {
-    window.location.href = '/login.html';
-}
+// Check with the server whether authentication is required. If required and not authenticated, redirect to login.
+(async function checkAuth() {
+    try {
+        const resp = await fetch('/.netlify/functions/auth');
+        if (resp.ok) {
+            const body = await resp.json();
+            const required = body && body.required === true;
+            if (required && localStorage.getItem('authenticated') !== 'true') {
+                window.location.href = '/login.html';
+                return;
+            }
+        }
+    } catch (err) {
+        // If auth check fails, fall back to existing localStorage check (conservative)
+        if (localStorage.getItem('authenticated') !== 'true') {
+            window.location.href = '/login.html';
+        }
+    }
+})();
 
 // Add logout function
 function logout() {
