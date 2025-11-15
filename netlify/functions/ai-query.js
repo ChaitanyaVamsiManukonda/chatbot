@@ -26,8 +26,8 @@ exports.handler = async function(event, context) {
         const audioName = data.audioName || `upload_${Date.now()}.webm`;
         const audioType = data.audioType || 'audio/webm';
 
-        // Validate API selection
-        if (api !== 'openai' && api !== 'anthropic') {
+        // Validate API selection. Allow local 'rag' mode in addition to remote APIs.
+        if (api !== 'openai' && api !== 'anthropic' && api !== 'rag') {
             throw new Error('Invalid API selection');
         }
 
@@ -37,6 +37,8 @@ exports.handler = async function(event, context) {
 
     // If audio was provided, decode and save it, then optionally transcribe
     let transcript = null;
+    // Make retrieved visible to outer scope so rag-mode can access it below
+    let retrieved = [];
         if (audioBase64) {
             const fs = require('fs');
             const os = require('os');
@@ -83,9 +85,9 @@ exports.handler = async function(event, context) {
 
                         // If a transcript exists, append it to the messages so the model can respond to it
                         if (transcript) {
-                                if (Array.isArray(messages)) {
-                                        messages.push({ role: 'user', content: transcript });
-                                }
+                            if (Array.isArray(messages)) {
+                                messages.push({ role: 'user', content: transcript });
+                            }
                         }
         }
 
@@ -96,9 +98,56 @@ exports.handler = async function(event, context) {
             // find last user message to use as query
             const lastUser = [...msgs].reverse().find(m => m && m.role === 'user' && typeof m.content === 'string');
             const userQuery = lastUser ? lastUser.content : null;
-            let retrieved = [];
+            retrieved = [];
             if (userQuery) {
                 retrieved = search(userQuery, 5);
+            }
+
+            // If the client explicitly requested local RAG answers, return a local RAG-generated message
+            if (api === 'rag') {
+                if (!retrieved || retrieved.length === 0) {
+                    return { statusCode: 200, body: JSON.stringify({ message: 'No relevant documents found in the index.', transcript }) };
+                }
+                // Create a concise extractive answer: score sentences across retrieved passages by overlap with query terms
+                const queryTokens = (userQuery || '').toLowerCase().match(/\b[a-z0-9']+\b/g) || [];
+                const sentences = [];
+                retrieved.slice(0, 6).forEach((doc, di) => {
+                    const parts = (doc.text || '').split(/(?<=[.!?])\s+/);
+                    parts.forEach((s, si) => {
+                        const clean = s.replace(/\s+/g, ' ').trim();
+                        if (clean.length > 8) {
+                            sentences.push({ docIndex: di, text: clean, title: doc.title || '' });
+                        }
+                    });
+                });
+
+                function sentenceScore(s) {
+                    const words = (s.text || '').toLowerCase().match(/\b[a-z0-9']+\b/g) || [];
+                    if (words.length === 0) return 0;
+                    let matches = 0;
+                    const uniq = new Set(words);
+                    queryTokens.forEach(q => { if (uniq.has(q)) matches++; });
+                    return matches / Math.sqrt(words.length);
+                }
+
+                const scored = sentences.map(s => ({ ...s, score: sentenceScore(s) }));
+                scored.sort((a,b) => b.score - a.score);
+                // pick top sentences (max 4) and keep them in doc order where possible
+                const topSentences = scored.slice(0, 6).filter(s => s.score > 0);
+                let answer = '';
+                if (topSentences.length > 0) {
+                    // group by docIndex to keep context
+                    const grouped = {};
+                    topSentences.forEach(s => { grouped[s.docIndex] = grouped[s.docIndex] || []; grouped[s.docIndex].push(s.text); });
+                    const parts = Object.keys(grouped).map(k => grouped[k].join(' '));
+                    answer = parts.join('\n\n');
+                } else {
+                    // fallback: concatenate top passages
+                    answer = retrieved.slice(0,3).map(r => (r.title ? r.title + ': ' : '') + r.text).join('\n\n');
+                }
+
+                const truncated = answer.length > 2000 ? answer.slice(0,2000) + '... (truncated)' : answer;
+                return { statusCode: 200, body: JSON.stringify({ message: truncated, transcript, retrieved: retrieved.slice(0,5) }) };
             }
 
             // If we have retrieved results but no API keys configured, return them directly (no-cost mode)

@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const sttTips = document.getElementById('sttTips');
     const sendBtn = document.getElementById('sendBtn');
     const recordingTimer = document.getElementById('recordingTimer');
+    const showSourcesToggle = document.getElementById('showSourcesToggle');
 
     // Conversation history
     let conversationHistory = [];
@@ -127,6 +128,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const data = await response.json();
             const assistantMessage = data.message;
+
+            // If the user requested sources, show retrieved documents as a separate assistant message
+            if (showSourcesToggle && showSourcesToggle.checked && data.retrieved && data.retrieved.length > 0) {
+                showRetrievedSources(data.retrieved);
+            }
             
             // Add assistant message to UI
             addMessageToUI('assistant', assistantMessage);
@@ -430,6 +436,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 addMessageToUI('assistant', result.message);
                 conversationHistory.push({ role: 'assistant', content: result.message });
             }
+
+            // Show retrieved sources if requested (audio flow)
+            if (showSourcesToggle && showSourcesToggle.checked && result.retrieved && result.retrieved.length > 0) {
+                showRetrievedSources(result.retrieved);
+            }
         } catch (err) {
             console.error('Error sending audio:', err);
             addMessageToUI('assistant', `Error sending audio: ${err.message}`);
@@ -458,6 +469,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function showRetrievedSources(retrieved) {
+        const container = document.createElement('div');
+        container.className = 'assistant-message';
+        let html = '<strong>Retrieved sources:</strong><br>';
+        retrieved.forEach((r, i) => {
+            const excerpt = (r.text || '').substring(0, 240).replace(/\n/g, ' ');
+            html += `<div class="mt-2"><em>[${i+1}] ${r.title || 'doc'}</em>: ${excerpt}</div>`;
+        });
+        container.innerHTML = html;
+        messagesContainer.appendChild(container);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 });

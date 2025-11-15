@@ -16,7 +16,7 @@
   const ingestRes = await ingest.handler(ingestEvent, {});
   console.log('Ingest result:', ingestRes);
 
-  const queryEvent = { httpMethod: 'POST', body: JSON.stringify({ api: 'openai', messages: [{ role: 'user', content: 'Tell me about red apples' }] }) };
+  const queryEvent = { httpMethod: 'POST', body: JSON.stringify({ api: 'rag', messages: [{ role: 'user', content: 'Tell me about red apples' }] }) };
   const queryRes = await ai.handler(queryEvent, {});
   console.log('Query result:', queryRes);
 })();

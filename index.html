@@ -79,9 +79,16 @@ function logout() {
                 <div class="mb-2">
                     <label for="apiSelection" class="block text-sm font-medium text-gray-700">Select API:</label>
                     <select id="apiSelection" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <option value="rag">RAG (local)</option>
                         <option value="openai">OpenAI</option>
                         <option value="anthropic">Claude</option>
                     </select>
+                    <div class="mt-2 text-sm">
+                        <label class="inline-flex items-center text-sm text-gray-700">
+                            <input id="showSourcesToggle" type="checkbox" class="mr-2">
+                            Show retrieved sources alongside answers
+                        </label>
+                    </div>
                 </div>
             </div>
         </header>
