@@ -14,7 +14,7 @@ exports.handler = async function(event, context) {
 
     // If append mode, load existing docs first
     if (mode === 'append') {
-      const existingIndex = loadIndex();
+      const existingIndex = await loadIndex();
       if (existingIndex && existingIndex.docs) {
         allDocs = existingIndex.docs.map(d => ({ id: d.id, title: d.title, text: d.text }));
       }
@@ -24,7 +24,7 @@ exports.handler = async function(event, context) {
     const newDocs = body.docs.map((d, i) => ({ id: d.id || `doc_${Date.now()}_${i}`, title: d.title || '', text: d.text || '' }));
     allDocs = allDocs.concat(newDocs);
 
-    const index = buildIndex(allDocs);
+    const index = await buildIndex(allDocs);
     return { statusCode: 200, body: JSON.stringify({ ok: true, indexed: newDocs.length, total: allDocs.length, mode, indexPath: index ? '../../data/index.json' : null }) };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };

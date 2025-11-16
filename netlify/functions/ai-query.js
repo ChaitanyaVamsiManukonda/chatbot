@@ -100,7 +100,7 @@ exports.handler = async function(event, context) {
             const userQuery = lastUser ? lastUser.content : null;
             retrieved = [];
             if (userQuery) {
-                retrieved = search(userQuery, 5);
+                retrieved = await search(userQuery, 5);
             }
 
             // If the client explicitly requested local RAG answers, return a local RAG-generated message
@@ -164,7 +164,7 @@ exports.handler = async function(event, context) {
                     }
 
                     // Build BM25-like sentence scoring using index idf values for improved extractive summarization
-                    const index = loadIndex();
+                    const index = await loadIndex();
                     const idf = (index && index.idf) ? index.idf : {};
                     const sentences = [];
                     retrieved.slice(0, 6).forEach((doc, di) => {
