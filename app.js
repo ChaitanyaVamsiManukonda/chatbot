@@ -337,6 +337,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Train RAG model with transcript
     const trainWithTranscriptBtn = document.getElementById('trainWithTranscriptBtn');
     const trainingStatus = document.getElementById('trainingStatus');
+    const mediaUrlInput = document.getElementById('mediaUrlInput');
+    const trainWithUrlBtn = document.getElementById('trainWithUrlBtn');
+    const mediaFileInput = document.getElementById('mediaFileInput');
+    const uploadAndTrainBtn = document.getElementById('uploadAndTrainBtn');
 
     trainWithTranscriptBtn.addEventListener('click', async function() {
         if (!latestTranscript) {
@@ -379,6 +383,93 @@ document.addEventListener('DOMContentLoaded', function() {
             trainingStatus.textContent = `✗ Training failed: ${err.message}`;
             trainingStatus.style.color = 'red';
             addMessageToUI('assistant', `Error training RAG: ${err.message}`);
+        }
+    });
+
+    // Train using a pasted media URL (audio/video)
+    trainWithUrlBtn.addEventListener('click', async function() {
+        const url = mediaUrlInput.value && mediaUrlInput.value.trim();
+        if (!url) {
+            addMessageToUI('assistant', 'Please paste a media URL to train with.');
+            return;
+        }
+        if (allowServerUpload && !allowServerUpload.checked) {
+            addMessageToUI('assistant', 'Server upload is disabled. Toggle "Allow server upload" to enable.');
+            return;
+        }
+
+        trainingStatus.textContent = 'Training from URL...';
+        trainingStatus.style.display = 'inline';
+        try {
+            // Heuristic: treat URLs ending with common audio/video extensions
+            const lower = url.toLowerCase();
+            const isAudio = lower.match(/\.(mp3|wav|webm|m4a|aac)$/);
+            const isVideo = lower.match(/\.(mp4|mov|mkv|webm)$/);
+            const doc = { id: `media_${Date.now()}`, title: 'Media Import', text: '', meta: { source_url: url } };
+            if (isAudio) doc.audioUrl = url;
+            else if (isVideo) doc.videoUrl = url;
+            else doc.text = ''; // unknown extension - try fetch/transcription server-side
+
+            const resp = await fetch('/.netlify/functions/ingest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ docs: [doc], mode: 'append' })
+            });
+            const result = await resp.json();
+            if (!resp.ok) throw new Error(result.error || `Server error ${resp.status}`);
+            trainingStatus.textContent = `✓ Trained with URL (${result.indexed} indexed)`;
+            trainingStatus.style.color = 'green';
+            setTimeout(() => trainingStatus.style.display = 'none', 3000);
+            addMessageToUI('assistant', `Imported and trained from URL: ${url}`);
+        } catch (err) {
+            console.error('URL training failed:', err);
+            trainingStatus.textContent = `✗ Training failed: ${err.message}`;
+            trainingStatus.style.color = 'red';
+            addMessageToUI('assistant', `URL training error: ${err.message}`);
+        }
+    });
+
+    // Upload media file (audio/video) and train using inline base64
+    uploadAndTrainBtn.addEventListener('click', async function() {
+        const file = mediaFileInput.files && mediaFileInput.files[0];
+        if (!file) {
+            addMessageToUI('assistant', 'Please select a file to upload.');
+            return;
+        }
+        if (allowServerUpload && !allowServerUpload.checked) {
+            addMessageToUI('assistant', 'Server upload is disabled. Toggle "Allow server upload" to enable.');
+            return;
+        }
+
+        trainingStatus.textContent = 'Uploading & training...';
+        trainingStatus.style.display = 'inline';
+        try {
+            const reader = new FileReader();
+            const base64 = await new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            const doc = { id: `media_${Date.now()}`, title: file.name, text: '', audioBase64: base64, meta: { type: file.type } };
+            const resp = await fetch('/.netlify/functions/ingest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ docs: [doc], mode: 'append' })
+            });
+            const result = await resp.json();
+            if (!resp.ok) throw new Error(result.error || `Server error ${resp.status}`);
+            trainingStatus.textContent = `✓ Uploaded & trained (${result.indexed} indexed)`;
+            trainingStatus.style.color = 'green';
+            setTimeout(() => trainingStatus.style.display = 'none', 3000);
+            addMessageToUI('assistant', `Uploaded and trained: ${file.name}`);
+            // clear file input
+            mediaFileInput.value = '';
+        } catch (err) {
+            console.error('Upload & train failed:', err);
+            trainingStatus.textContent = `✗ Training failed: ${err.message}`;
+            trainingStatus.style.color = 'red';
+            addMessageToUI('assistant', `Upload training error: ${err.message}`);
         }
     });
 

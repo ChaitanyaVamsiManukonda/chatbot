@@ -108,6 +108,105 @@
         "type": "text",
         "source_url": null
       }
+    },
+    {
+      "id": "t_text",
+      "title": "Text Note",
+      "text": "This is a simple text note to index.",
+      "tf": {
+        "simple": 1,
+        "text": 2,
+        "note": 2,
+        "index": 1
+      },
+      "termsCount": 6,
+      "meta": {
+        "type": "text",
+        "source_url": null
+      }
+    },
+    {
+      "id": "a_inline",
+      "title": "Inline Audio",
+      "text": "",
+      "tf": {
+        "inline": 1,
+        "audio": 1
+      },
+      "termsCount": 2,
+      "meta": {
+        "type": "audio",
+        "source": "inline"
+      }
+    },
+    {
+      "id": "v_link",
+      "title": "Video Link",
+      "text": "",
+      "tf": {
+        "video": 1,
+        "link": 1
+      },
+      "termsCount": 2,
+      "meta": {
+        "type": "video",
+        "source_url": "https://example.com/video_sample.mp4",
+        "source": "https://example.com/video_sample.mp4"
+      }
+    },
+    {
+      "id": "transcript_1763257671594",
+      "title": "Voice Transcript",
+      "text": "My name is destiny Sandeep",
+      "tf": {
+        "my": 1,
+        "name": 1,
+        "destiny": 1,
+        "sandeep": 1,
+        "voice": 1,
+        "transcript": 1
+      },
+      "termsCount": 6,
+      "meta": {
+        "type": "text",
+        "source_url": null
+      }
+    },
+    {
+      "id": "transcript_1763257680822",
+      "title": "Voice Transcript",
+      "text": "My name is destiny Sandeep",
+      "tf": {
+        "my": 1,
+        "name": 1,
+        "destiny": 1,
+        "sandeep": 1,
+        "voice": 1,
+        "transcript": 1
+      },
+      "termsCount": 6,
+      "meta": {
+        "type": "text",
+        "source_url": null
+      }
+    },
+    {
+      "id": "transcript_1763257686335",
+      "title": "Voice Transcript",
+      "text": "My name is destiny Sandeep",
+      "tf": {
+        "my": 1,
+        "name": 1,
+        "destiny": 1,
+        "sandeep": 1,
+        "voice": 1,
+        "transcript": 1
+      },
+      "termsCount": 6,
+      "meta": {
+        "type": "text",
+        "source_url": null
+      }
     }
   ],
   "df": {
@@ -136,7 +235,7 @@
     "js": 1,
     "express": 1,
     "framework": 1,
-    "voice": 3,
+    "voice": 6,
     "training": 3,
     "show": 1,
     "me": 2,
@@ -150,49 +249,75 @@
     "rest": 1,
     "apis": 1,
     "implement": 1,
-    "them": 1
+    "them": 1,
+    "simple": 1,
+    "text": 1,
+    "note": 1,
+    "index": 1,
+    "inline": 1,
+    "audio": 1,
+    "video": 1,
+    "link": 1,
+    "my": 3,
+    "name": 3,
+    "destiny": 3,
+    "sandeep": 3,
+    "transcript": 3
   },
   "idf": {
-    "1": 2.0986122886681096,
-    "2": 2.0986122886681096,
-    "3": 2.0986122886681096,
-    "python": 1.6931471805599454,
-    "high": 2.0986122886681096,
-    "level": 2.0986122886681096,
-    "programming": 2.0986122886681096,
-    "language": 1.6931471805599454,
-    "easy": 2.0986122886681096,
-    "learn": 2.0986122886681096,
-    "powerful": 2.0986122886681096,
-    "basics": 2.0986122886681096,
-    "javascript": 2.0986122886681096,
-    "web": 1.6931471805599454,
-    "runs": 2.0986122886681096,
-    "browsers": 2.0986122886681096,
-    "servers": 2.0986122886681096,
-    "i": 2.0986122886681096,
-    "want": 2.0986122886681096,
-    "build": 2.0986122886681096,
-    "applications": 2.0986122886681096,
-    "node": 2.0986122886681096,
-    "js": 2.0986122886681096,
-    "express": 2.0986122886681096,
-    "framework": 2.0986122886681096,
-    "voice": 1.4054651081081644,
-    "training": 1.4054651081081644,
-    "show": 2.0986122886681096,
-    "me": 1.6931471805599454,
-    "how": 1.6931471805599454,
-    "connect": 2.0986122886681096,
-    "database": 2.0986122886681096,
-    "using": 2.0986122886681096,
-    "sqlalchemy": 2.0986122886681096,
-    "tell": 2.0986122886681096,
-    "about": 2.0986122886681096,
-    "rest": 2.0986122886681096,
-    "apis": 2.0986122886681096,
-    "implement": 2.0986122886681096,
-    "them": 2.0986122886681096
+    "1": 2.791759469228055,
+    "2": 2.791759469228055,
+    "3": 2.791759469228055,
+    "python": 2.386294361119891,
+    "high": 2.791759469228055,
+    "level": 2.791759469228055,
+    "programming": 2.791759469228055,
+    "language": 2.386294361119891,
+    "easy": 2.791759469228055,
+    "learn": 2.791759469228055,
+    "powerful": 2.791759469228055,
+    "basics": 2.791759469228055,
+    "javascript": 2.791759469228055,
+    "web": 2.386294361119891,
+    "runs": 2.791759469228055,
+    "browsers": 2.791759469228055,
+    "servers": 2.791759469228055,
+    "i": 2.791759469228055,
+    "want": 2.791759469228055,
+    "build": 2.791759469228055,
+    "applications": 2.791759469228055,
+    "node": 2.791759469228055,
+    "js": 2.791759469228055,
+    "express": 2.791759469228055,
+    "framework": 2.791759469228055,
+    "voice": 1.538996500732687,
+    "training": 2.0986122886681096,
+    "show": 2.791759469228055,
+    "me": 2.386294361119891,
+    "how": 2.386294361119891,
+    "connect": 2.791759469228055,
+    "database": 2.791759469228055,
+    "using": 2.791759469228055,
+    "sqlalchemy": 2.791759469228055,
+    "tell": 2.791759469228055,
+    "about": 2.791759469228055,
+    "rest": 2.791759469228055,
+    "apis": 2.791759469228055,
+    "implement": 2.791759469228055,
+    "them": 2.791759469228055,
+    "simple": 2.791759469228055,
+    "text": 2.791759469228055,
+    "note": 2.791759469228055,
+    "index": 2.791759469228055,
+    "inline": 2.791759469228055,
+    "audio": 2.791759469228055,
+    "video": 2.791759469228055,
+    "link": 2.791759469228055,
+    "my": 2.0986122886681096,
+    "name": 2.0986122886681096,
+    "destiny": 2.0986122886681096,
+    "sandeep": 2.0986122886681096,
+    "transcript": 2.0986122886681096
   },
-  "N": 5
+  "N": 11
 }

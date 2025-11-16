@@ -125,6 +125,14 @@ function logout() {
                     <button id="trainWithTranscriptBtn" class="text-sm text-green-600 ml-3" style="display:none;">📚 Train RAG with transcript</button>
                     <span id="trainingStatus" class="text-sm text-green-700 ml-2" style="display:none;"></span>
                     <span id="sttSupportNote" class="text-sm text-gray-500 ml-3"></span>
+                    <div class="mt-3">
+                        <input id="mediaUrlInput" type="text" placeholder="Paste audio/video URL to train (mp3/mp4/... )" class="w-2/3 rounded border px-2 py-1 text-sm">
+                        <button id="trainWithUrlBtn" class="text-sm text-indigo-600 ml-2">Train with URL</button>
+                    </div>
+                    <div class="mt-2">
+                        <input id="mediaFileInput" type="file" accept="audio/*,video/*" class="text-sm">
+                        <button id="uploadAndTrainBtn" class="text-sm text-indigo-600 ml-2">Upload & Train</button>
+                    </div>
                     <div class="mt-2">
                         <label class="inline-flex items-center text-sm text-gray-700">
                             <input id="useSttToggle" type="checkbox" class="mr-2" checked>
