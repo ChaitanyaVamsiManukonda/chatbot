@@ -398,18 +398,21 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        trainingStatus.textContent = 'Training from URL...';
+        trainingStatus.textContent = 'Fetching & training from URL...';
         trainingStatus.style.display = 'inline';
+        addMessageToUI('assistant', `Processing URL: ${url}\n(If TRANSCRIBE_WITH_OPENAI is not enabled, the URL metadata will be indexed as a placeholder.)`);
+        
         try {
             // Heuristic: treat URLs ending with common audio/video extensions
             const lower = url.toLowerCase();
             const isAudio = lower.match(/\.(mp3|wav|webm|m4a|aac)$/);
             const isVideo = lower.match(/\.(mp4|mov|mkv|webm)$/);
-            const doc = { id: `media_${Date.now()}`, title: 'Media Import', text: '', meta: { source_url: url } };
+            const doc = { id: `media_${Date.now()}`, title: url.split('/').pop() || 'Media Import', text: '', meta: { source_url: url } };
             if (isAudio) doc.audioUrl = url;
             else if (isVideo) doc.videoUrl = url;
-            else doc.text = ''; // unknown extension - try fetch/transcription server-side
+            else doc.meta.type = 'media'; // unknown extension - let server-side decide
 
+            console.log('Sending ingest request with doc:', JSON.stringify(doc, null, 2));
             const resp = await fetch('/.netlify/functions/ingest', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -417,10 +420,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const result = await resp.json();
             if (!resp.ok) throw new Error(result.error || `Server error ${resp.status}`);
-            trainingStatus.textContent = `✓ Trained with URL (${result.indexed} indexed)`;
+            trainingStatus.textContent = `✓ Trained with URL (${result.indexed} indexed, total: ${result.total})`;
             trainingStatus.style.color = 'green';
             setTimeout(() => trainingStatus.style.display = 'none', 3000);
-            addMessageToUI('assistant', `Imported and trained from URL: ${url}`);
+            addMessageToUI('assistant', `✓ Successfully indexed from URL. If transcription is enabled, content has been transcribed; otherwise, URL metadata is stored for reference.`);
         } catch (err) {
             console.error('URL training failed:', err);
             trainingStatus.textContent = `✗ Training failed: ${err.message}`;

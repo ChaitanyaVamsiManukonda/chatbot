@@ -81,20 +81,24 @@ exports.handler = async function(event, context) {
       if (!text && (d.audioUrl || d.videoUrl || meta.source_url)) {
         const url = d.audioUrl || d.videoUrl || meta.source_url;
         try {
+          console.log('Fetching URL for doc', id, url);
           const resp = await fetch(url);
           if (resp.ok) {
             const arrayBuffer = await resp.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             const filename = path.basename(url.split('?')[0]) || `ingest_${id}`;
+            console.log('Fetched', buffer.length, 'bytes from', url, 'for doc', id);
             const tr = await transcribeBuffer(buffer, filename);
             if (tr) {
               text = tr;
               meta.type = d.audioUrl ? 'audio' : 'video';
               meta.source = url;
+              console.log('Transcribed doc', id, ':', text.substring(0, 100));
             } else {
-              // no transcription: preserve source url for manual review
+              // no transcription available: set placeholder
               meta.type = d.audioUrl ? 'audio' : 'video';
               meta.source = url;
+              console.log('No transcription for doc', id, 'TRANSCRIBE_WITH_OPENAI may not be enabled');
             }
           } else {
             console.warn('Failed to fetch source URL for doc', id, url, resp.status);
@@ -104,6 +108,19 @@ exports.handler = async function(event, context) {
           console.error('Error fetching source URL for doc', id, e.message);
           meta.source = url;
         }
+      }
+
+      // If we still have no text, check for optional pre-transcribed text in meta.transcribed_text
+      if (!text && d.meta && d.meta.transcribed_text) {
+        text = d.meta.transcribed_text;
+        console.log('Using pre-transcribed text for doc', id);
+      }
+
+      // If we still have no text but have a URL, create a placeholder that indicates this is media content
+      if (!text && meta.source) {
+        const mediaType = meta.type === 'video' ? 'Video' : meta.type === 'audio' ? 'Audio' : 'Media';
+        text = `[${mediaType} Content] URL: ${meta.source}. To enable automatic transcription, set TRANSCRIBE_WITH_OPENAI=true and provide OPENAI_API_KEY in environment variables.`;
+        console.log('Created placeholder text for URL-based doc', id);
       }
 
       // Ensure we have a text field (even empty) to index; prefer transcript or provided text
