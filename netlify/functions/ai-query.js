@@ -17,9 +17,9 @@ exports.handler = async function(event, context) {
     }
 
     try {
-        // Parse request body
-        const data = JSON.parse(event.body);
-        const { api, messages } = data;
+    // Parse request body
+    const data = JSON.parse(event.body);
+    const { api, messages, useLlm } = data;
 
         // Support for audio upload: data.audio (base64), data.audioName, data.audioType
         const audioBase64 = data.audio;
@@ -108,46 +108,112 @@ exports.handler = async function(event, context) {
                 if (!retrieved || retrieved.length === 0) {
                     return { statusCode: 200, body: JSON.stringify({ message: 'No relevant documents found in the index.', transcript }) };
                 }
-                // Create a concise extractive answer: score sentences across retrieved passages by overlap with query terms
-                const queryTokens = (userQuery || '').toLowerCase().match(/\b[a-z0-9']+\b/g) || [];
-                const sentences = [];
-                retrieved.slice(0, 6).forEach((doc, di) => {
-                    const parts = (doc.text || '').split(/(?<=[.!?])\s+/);
-                    parts.forEach((s, si) => {
-                        const clean = s.replace(/\s+/g, ' ').trim();
-                        if (clean.length > 8) {
-                            sentences.push({ docIndex: di, text: clean, title: doc.title || '' });
+                    // If user requested LLM synthesis and we have keys, call the LLM with retrieved context
+                    if (useLlm && (OPENAI_API_KEY || ANTHROPIC_API_KEY)) {
+                        // Build a message that contains retrieved passages as system instruction
+                        const combined = retrieved.map((r, i) => `[[${i+1}] ${r.title || 'doc'}]\n${r.text}`).join('\n\n---\n\n');
+                        const systemMsg = { role: 'system', content: `You are given the following retrieved documents. Use them to answer the user's question concisely and cite sources when appropriate.\n\n${combined}` };
+                        const userMsg = { role: 'user', content: userQuery };
+
+                        // Prefer OpenAI if available
+                        if (OPENAI_API_KEY) {
+                            const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ model: OPENAI_DEFAULT_MODEL, messages: [systemMsg, userMsg], temperature: 0.0 })
+                            });
+                            if (!resp.ok) {
+                                const err = await resp.text().catch(() => '');
+                                console.error('OpenAI error on RAG LLM call', resp.status, err);
+                            } else {
+                                const j = await resp.json();
+                                const llmAnswer = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+                                return { statusCode: 200, body: JSON.stringify({ message: llmAnswer, transcript, retrieved: retrieved.slice(0,5) }) };
+                            }
                         }
+
+                        // Fallback to Anthropic if available
+                        if (ANTHROPIC_API_KEY) {
+                            const formattedMessages = [systemMsg, userMsg].map(m => ({ role: m.role, content: [{ type: 'text', text: m.content }] }));
+                            const resp = await fetch('https://api.anthropic.com/v1/messages', {
+                                method: 'POST',
+                                headers: {
+                                    'anthropic-version': '2023-06-01',
+                                    'x-api-key': ANTHROPIC_API_KEY,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ model: CLAUDE_DEFAULT_MODEL, messages: formattedMessages, max_tokens: 1024 })
+                            });
+                            if (!resp.ok) {
+                                const err = await resp.text().catch(() => '');
+                                console.error('Anthropic error on RAG LLM call', resp.status, err);
+                            } else {
+                                const j = await resp.json();
+                                if (j.content && Array.isArray(j.content)) {
+                                    const textContent = j.content.find(item => item.type === 'text');
+                                    if (textContent && textContent.text) {
+                                        return { statusCode: 200, body: JSON.stringify({ message: textContent.text, transcript, retrieved: retrieved.slice(0,5) }) };
+                                    }
+                                }
+                            }
+                        }
+                        // If LLM calls failed, fall through to local extractive path below
+                    }
+
+                    // Build BM25-like sentence scoring using index idf values for improved extractive summarization
+                    const index = loadIndex();
+                    const idf = (index && index.idf) ? index.idf : {};
+                    const sentences = [];
+                    retrieved.slice(0, 6).forEach((doc, di) => {
+                        const parts = (doc.text || '').split(/(?<=[.!?])\s+/);
+                        parts.forEach(s => {
+                            const clean = s.replace(/\s+/g, ' ').trim();
+                            if (clean.length > 8) sentences.push({ docIndex: di, text: clean, title: doc.title || '' });
+                        });
                     });
-                });
 
-                function sentenceScore(s) {
-                    const words = (s.text || '').toLowerCase().match(/\b[a-z0-9']+\b/g) || [];
-                    if (words.length === 0) return 0;
-                    let matches = 0;
-                    const uniq = new Set(words);
-                    queryTokens.forEach(q => { if (uniq.has(q)) matches++; });
-                    return matches / Math.sqrt(words.length);
-                }
+                    // tokenization helper
+                    const tok = (t) => (t || '').toLowerCase().match(/\b[a-z0-9']+\b/g) || [];
+                    const qtokens = tok(userQuery);
+                    const avgLen = sentences.length ? sentences.reduce((a,b)=>a+tok(b.text).length,0)/sentences.length : 1;
+                    const k1 = 1.2, b = 0.75;
 
-                const scored = sentences.map(s => ({ ...s, score: sentenceScore(s) }));
-                scored.sort((a,b) => b.score - a.score);
-                // pick top sentences (max 4) and keep them in doc order where possible
-                const topSentences = scored.slice(0, 6).filter(s => s.score > 0);
-                let answer = '';
-                if (topSentences.length > 0) {
-                    // group by docIndex to keep context
-                    const grouped = {};
-                    topSentences.forEach(s => { grouped[s.docIndex] = grouped[s.docIndex] || []; grouped[s.docIndex].push(s.text); });
-                    const parts = Object.keys(grouped).map(k => grouped[k].join(' '));
-                    answer = parts.join('\n\n');
-                } else {
-                    // fallback: concatenate top passages
-                    answer = retrieved.slice(0,3).map(r => (r.title ? r.title + ': ' : '') + r.text).join('\n\n');
-                }
+                    function bm25SentenceScore(s) {
+                        const words = tok(s.text);
+                        if (words.length === 0) return 0;
+                        const wordCounts = {};
+                        words.forEach(w => wordCounts[w] = (wordCounts[w] || 0) + 1);
+                        let score = 0;
+                        const len = words.length;
+                        const norm = k1 * (1 - b + b * (len / avgLen));
+                        // score by query terms
+                        const seen = new Set();
+                        qtokens.forEach(t => {
+                            if (seen.has(t)) return; seen.add(t);
+                            const tf = wordCounts[t] || 0;
+                            const termIdf = idf[t] || Math.log((index && index.N ? index.N : 1) + 1);
+                            score += termIdf * ((tf * (k1 + 1)) / (tf + norm));
+                        });
+                        return score;
+                    }
 
-                const truncated = answer.length > 2000 ? answer.slice(0,2000) + '... (truncated)' : answer;
-                return { statusCode: 200, body: JSON.stringify({ message: truncated, transcript, retrieved: retrieved.slice(0,5) }) };
+                    const scored = sentences.map(s => ({ ...s, score: bm25SentenceScore(s) }));
+                    scored.sort((a,b) => b.score - a.score);
+                    const top = scored.slice(0, 6).filter(s => s.score > 0);
+                    let answer = '';
+                    if (top.length > 0) {
+                        // group by docIndex to keep context
+                        const grouped = {};
+                        top.forEach(s => { grouped[s.docIndex] = grouped[s.docIndex] || []; grouped[s.docIndex].push(s.text); });
+                        answer = Object.keys(grouped).map(k => grouped[k].join(' ')).join('\n\n');
+                    } else {
+                        answer = retrieved.slice(0,3).map(r => (r.title ? r.title + ': ' : '') + r.text).join('\n\n');
+                    }
+                    const truncated = answer.length > 2000 ? answer.slice(0,2000) + '... (truncated)' : answer;
+                    return { statusCode: 200, body: JSON.stringify({ message: truncated, transcript, retrieved: retrieved.slice(0,5) }) };
             }
 
             // If we have retrieved results but no API keys configured, return them directly (no-cost mode)

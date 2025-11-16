@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const sendBtn = document.getElementById('sendBtn');
     const recordingTimer = document.getElementById('recordingTimer');
     const showSourcesToggle = document.getElementById('showSourcesToggle');
+    const useLlmSynthesis = document.getElementById('useLlmSynthesis');
 
     // Conversation history
     let conversationHistory = [];
@@ -119,6 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({
                     api: api,
                     messages: conversationHistory
+                    , useLlm: (useLlmSynthesis && useLlmSynthesis.checked) ? true : false
                 })
             });
             
@@ -414,6 +416,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 audioName: `recording_${Date.now()}.webm`,
                 audioType: latestAudioBlob.type
             };
+            // include useLlm flag if user enabled it in the UI
+            if (useLlmSynthesis && useLlmSynthesis.checked) payload.useLlm = true;
 
             const resp = await fetch('/.netlify/functions/ai-query', {
                 method: 'POST',

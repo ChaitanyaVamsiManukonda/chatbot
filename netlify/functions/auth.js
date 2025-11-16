@@ -3,10 +3,11 @@ exports.handler = async function(event, context) {
     const SITE_PASSWORD = process.env.SITE_PASSWORD;
 
     if (event.httpMethod === 'GET') {
-        // Return whether password protection is enabled
+        // Return whether password protection is enabled. Support explicit DISABLE_AUTH value.
+        const required = Boolean(SITE_PASSWORD) && SITE_PASSWORD !== 'DISABLE_AUTH';
         return {
             statusCode: 200,
-            body: JSON.stringify({ required: Boolean(SITE_PASSWORD) })
+            body: JSON.stringify({ required })
         };
     }
 
@@ -22,8 +23,8 @@ exports.handler = async function(event, context) {
         const data = JSON.parse(event.body || '{}');
         const { password } = data;
 
-        // If no SITE_PASSWORD configured, authentication is not required — accept any login
-        if (!SITE_PASSWORD) {
+        // If no SITE_PASSWORD configured, or set to DISABLE_AUTH, authentication is not required — accept any login
+        if (!SITE_PASSWORD || SITE_PASSWORD === 'DISABLE_AUTH') {
             return {
                 statusCode: 200,
                 body: JSON.stringify({ message: 'Authentication not required' })
